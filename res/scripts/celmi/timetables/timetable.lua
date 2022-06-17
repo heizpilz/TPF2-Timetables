@@ -263,6 +263,7 @@ function timetable.waitingRequired(vehicle)
 
             if currentlyWaiting[currentLineString].stations[currentStop].vehiclesDeparting[vehicle]
                and (currentlyWaiting[currentLineString].stations[currentStop].vehiclesDeparting[vehicle].outboundTime + 60) > time then
+                print("Departing vehicle: " .. vehicle)
                 return false
             end
 
@@ -273,6 +274,9 @@ function timetable.waitingRequired(vehicle)
                 currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting = {}
                 return false
             end
+
+            print("Line: " .. currentLine .. " Station: " .. currentStop ..  " Vehicle: " .. vehicle .. " Time: " .. os.date('%M:%S', time % (60*60)))
+            print(" Slot: " .. os.date('%M:%S', nextConstraint[1]*60+nextConstraint[2]) .. " | " .. os.date('%M:%S', nextConstraint[3]*60 + nextConstraint[4]))
             if timetable.beforeDeparture(time, nextConstraint, time) then
                 -- Constraint set and I need to wait
                 currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle] = {
@@ -430,6 +434,8 @@ function timetable.getNextConstraint(constraints, time, used_constraints)
         for _, used_constraint in pairs(used_constraints) do
             if constraint == used_constraint.constraint then
                 found = true
+                print("Constraint taken")
+                print(" Slot: " .. os.date('%M:%S', constraint[1]*60+constraint[2]) .. " | " .. os.date('%M:%S', constraint[3]*60 + constraint[4]))
             end
         end
 
