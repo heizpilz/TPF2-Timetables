@@ -255,27 +255,30 @@ function timetable.waitingRequired(vehicle)
     if not currentlyWaiting[currentLineString].stations[currentStop] then
           currentlyWaiting[currentLineString].stations[currentStop] = { vehiclesWaiting = {}, vehiclesDeparting = {}}
     end
-    if timetableObject[currentLineString].stations[currentStop].conditions.type == "ArrDep" then
+    local currentStopInTimetableObj = timetableObject[currentLineString].stations[currentStop]
+    local currentStopInCurrentlyWaiting = currentlyWaiting[currentLineString].stations[currentStop]
+
+    if currentStopInTimetableObj.conditions.type == "ArrDep" then
         -- am I currently waiting or just arrived?
 
-        if not (currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle]) then
+        if not (currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle]) then
             -- check if is about to depart
 
-            if currentlyWaiting[currentLineString].stations[currentStop].vehiclesDeparting[vehicle]
-               and (currentlyWaiting[currentLineString].stations[currentStop].vehiclesDeparting[vehicle].outboundTime + 60) > time then
+            if currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle]
+               and (currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle].outboundTime + 60) > time then
                 return false
             end
 
             -- just arrived
-            local nextConstraint = timetable.getNextConstraint(timetableObject[currentLineString].stations[currentStop].conditions.ArrDep, time, currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting)
+            local nextConstraint = timetable.getNextConstraint(currentStopInTimetableObj.conditions.ArrDep, time, currentStopInCurrentlyWaiting.vehiclesWaiting)
             if not nextConstraint then
                 -- no constraints set
-                currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting = {}
+                currentStopInCurrentlyWaiting.vehiclesWaiting = {}
                 return false
             end
             if timetable.beforeDeparture(time, nextConstraint, time) then
                 -- Constraint set and I need to wait
-                currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle] = {
+                currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = {
                     type = "ArrDep",
                     arrivalTime = time,
                     constraint = nextConstraint
@@ -284,23 +287,23 @@ function timetable.waitingRequired(vehicle)
                 return true
             else
                 -- Constraint set and its time to depart
-                currentlyWaiting[currentLineString].stations[currentStop].vehiclesDeparting[vehicle] = {outboundTime = time}
-                currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle] = nil
+                currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle] = {outboundTime = time}
+                currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
                 return false
             end
         else
             -- already waiting
             if timetableHelper.getTimeUntilDeparture(vehicle) >= 5 then return false end
 
-            local arrivalTime = currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle].arrivalTime
-            local constraint = currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle].constraint
+            local arrivalTime = currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle].arrivalTime
+            local constraint = currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle].constraint
             if timetable.beforeDeparture(arrivalTime, constraint, time) then
                 -- need to continue waiting
                 return true
             else
                 -- done waiting
-                currentlyWaiting[currentLineString].stations[currentStop].vehiclesDeparting[vehicle] = {outboundTime = time}
-                currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle] = nil
+                currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle] = {outboundTime = time}
+                currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
                 return false
             end
         end
@@ -309,7 +312,7 @@ function timetable.waitingRequired(vehicle)
     --------------------------------------------------------------------------------------------------------------------
     --------------------------------------- DEBOUNCE -------------------------------------------------------------------
     --------------------------------------------------------------------------------------------------------------------
-    elseif timetableObject[currentLineString].stations[currentStop].conditions.type == "debounce" then
+    elseif currentStopInTimetableObj.conditions.type == "debounce" then
         if timetableHelper.getTimeUntilDeparture(vehicle) >= 5 then return false end
         
         local previousDepartureTime = timetableHelper.getPreviousDepartureTime(tonumber(vehicle))
@@ -317,13 +320,13 @@ function timetable.waitingRequired(vehicle)
         if not condition[1] then condition[1] = 0 end
         if not condition[2] then condition[2] = 0 end
         if time > previousDepartureTime + ((condition[1] * 60)  + condition[2]) then
-            currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle] = nil
+            currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
             return false
         else
             return true
         end
     else
-        currentlyWaiting[currentLineString].stations[currentStop].vehiclesWaiting[vehicle] = nil
+        currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
         return false
     end
 end
