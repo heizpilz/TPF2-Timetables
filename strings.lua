@@ -6,6 +6,8 @@ function data()
             ["arrival_i18n"] = "Arrival",
             ["dep_i18n"] = "Dep: ",
             ["departure_i18n"] = "Departure",
+            ["wait_i18n"] = "Wait: ",
+            ["wait_time_i18n"] = "Waiting Time",
             ["unbunch_time_i18n"] = "Unbunch Time",
             ["unbunch_i18n"] = "Unbunch",
             ["timetable_i18n"] = "Timetable",
@@ -18,6 +20,7 @@ function data()
             ["frequency_i18n"] = "Frequency",
             ["journey_time_i18n"] = "Journey Time",
             ["arr_dep_i18n"] = "Arrival/Departure",
+            ["wait_dep_i18n"] = "Wait/Departure",
             ["no_timetable_i18n"] = "No Timetable",
             ["all_i18n"] = "All",
             ["add_i18n"] = "Add",
@@ -39,6 +42,8 @@ keep the constraints. The following constraints are available:
             ["arrival_i18n"] = "Ankunft",
             ["dep_i18n"] = "Ab: ",
             ["departure_i18n"] = "Abfahrt",
+            ["wait_i18n"] = "Halt: ",
+            ["wait_time_i18n"] = "Haltezeit",
             ["unbunch_time_i18n"] = "Taktzeit", -- ????;
             ["unbunch_i18n"] = "Takt", -- ????
             ["timetable_i18n"] = "Fahrplan",
@@ -51,6 +56,7 @@ keep the constraints. The following constraints are available:
             ["frequency_i18n"] = "Frequenz",
             ["journey_time_i18n"] = "Fahrzeit",
             ["arr_dep_i18n"] = "Ankunft/Abfahrt",
+            ["wait_dep_i18n"] = "Warten/Abfahrt",
             ["no_timetable_i18n"] = "Kein Fahrplan",
             ["all_i18n"] = "Alle",
             ["add_i18n"] = "+",

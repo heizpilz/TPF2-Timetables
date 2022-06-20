@@ -3,6 +3,7 @@ local timetableHelper = {}
 local UIStrings = {
     arr = _("arr_i18n"),
     dep = _("dep_i18n"),
+    wait = _("wait_i18n"),
     unbunchTime = _("unbunch_time_i18n")
 }
 
@@ -422,13 +423,16 @@ end
 -------------------------------------------------------------
 
 ---@param cond table : TimetableCondition,
----@param type string, "ArrDep" |"debounce"
--- returns String, ready to display in the UI
+---@param type string "ArrDep" | "debounce" | "WaitDep"
+---@return string _ ready to display in the UI
 function timetableHelper.conditionToString(cond, type)
     if (not cond) or (not type) then return "" end
-    if type =="ArrDep" or type == "MinWaitDep" then
+    if type == "ArrDep" or type == "WaitDep" then
         local arr = UIStrings.arr
         local dep = UIStrings.dep
+        if type == "WaitDep" then
+			arr = UIStrings.wait
+		end
         for _,v in pairs(cond) do
             arr = arr .. string.format("%02d", v[1]) .. ":" .. string.format("%02d", v[2])  .. "|"
             dep = dep .. string.format("%02d", v[3]) .. ":" .. string.format("%02d", v[4])  .. "|"
@@ -445,30 +449,29 @@ function timetableHelper.conditionToString(cond, type)
 end
 
 ---@param i number Index of Combobox,
--- returns String, ready to display in the UI
+---@return string String of constraint type
 function timetableHelper.constraintIntToString(i)
     if i == 0 then return "None"
     elseif i == 1 then return "ArrDep"
     --elseif i == 2 then return "minWait"
     elseif i == 2 then return "debounce"
     --elseif i == 4 then return "moreFancey"
-    elseif i == 3 then return "MinWaitDep"
+    elseif i == 3 then return "WaitDep"
     else return "ERROR"
     end
 end
 
----@param i string, "ArrDep" |"debounce"
--- returns Number, index of combobox
+---@param i string condition type string "None" | "ArrDep" | "debounce" | "WaitDep"
+---@return number index of combobox
 function timetableHelper.constraintStringToInt(i)
     if i == "None" then return 0
     elseif i == "ArrDep" then return 1
     --elseif i == "minWait" then return 2
     elseif i == "debounce" then return 2
     --elseif i == "moreFancey" then return 4
-    elseif i == "MinWaitDep" then return 3
+    elseif i == "WaitDep" then return 3
     else return 0
     end
-
 end
 
 

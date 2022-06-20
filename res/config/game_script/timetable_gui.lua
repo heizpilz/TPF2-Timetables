@@ -31,6 +31,7 @@ local UIStrings = {
 		arrival	= _("arrival_i18n"),
 		dep	= _("dep_i18n"),
 		departure = _("departure_i18n"),
+        wait_time = _("wait_time_i18n"),
 		unbunch_time = _("unbunch_time_i18n"),
 		unbunch	= _("unbunch_i18n"),
 		timetable = _("timetable_i18n"),
@@ -43,7 +44,7 @@ local UIStrings = {
 		frequency = _("frequency_i18n"),
 		journey_time = _("journey_time_i18n"),
 		arr_dep	= _("arr_dep_i18n"),
-        min_wait_dep	= _("min_wait_dep_i18n"),
+        wait_dep = _("wait_dep_i18n"),
 		no_timetable = _("no_timetable_i18n"),
 		all	= _("all_i18n"),
 		add	= _("add_i18n"),
@@ -437,9 +438,9 @@ end
 ---------------------- Middle TABLE -------------------------
 -------------------------------------------------------------
 
--- params
--- index: index of currently selected line
--- bool: emit select signal when building table
+---comment
+---@param index any index of currently selected line
+---@param bool boolean emit select signal when building table
 function timetableGUI.fillStationTable(index, bool)
     local lang = api.util.getLanguage()
     local local_style = {local_styles[lang.code]}
@@ -592,7 +593,7 @@ function timetableGUI.fillConstraintTable(index,lineID)
     comboBox:addItem(UIStrings.arr_dep)
     --comboBox:addItem("Minimum Wait")
     comboBox:addItem(UIStrings.unbunch)
-    comboBox:addItem(UIStrings.min_wait_dep)
+    comboBox:addItem(UIStrings.wait_dep)
     --comboBox:addItem("Every X minutes")
     comboBox:setGravity(1,0)
 
@@ -667,10 +668,16 @@ function timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
 
 
         local linetable = api.gui.comp.Table.new(5, 'NONE')
-        local arivalLabel =  api.gui.comp.TextView.new(UIStrings.arrival .. ":  ")
+        local firstRowLabelString
+        if condType == "ArrDep" then
+            firstRowLabelString = UIStrings.arrival
+        elseif condType == "WaitDep" then
+            firstRowLabelString = UIStrings.wait_time
+        end
+        local firstRowLabel =  api.gui.comp.TextView.new(firstRowLabelString .. ":  ")
 
-        arivalLabel:setMinimumSize(api.gui.util.Size.new(80, 30))
-        arivalLabel:setMaximumSize(api.gui.util.Size.new(80, 30))
+        firstRowLabel:setMinimumSize(api.gui.util.Size.new(80, 30))
+        firstRowLabel:setMaximumSize(api.gui.util.Size.new(80, 30))
 
         local arrivalMin = api.gui.comp.DoubleSpinBox.new()
         arrivalMin:setMinimum(0,false)
@@ -707,7 +714,7 @@ function timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
         end)
 
         linetable:addRow({
-            arivalLabel,
+            firstRowLabel,
             arrivalMin,
             api.gui.comp.TextView.new(":"),
             arrivalSec,

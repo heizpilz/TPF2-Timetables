@@ -159,7 +159,7 @@ function timetable.addCondition(line, stationNumber, condition)
     if not(line and stationNumber and condition) then return -1 end
 
     if timetableObject[tostring(line)] and timetableObject[tostring(line)].stations[stationNumber] then
-        if condition.type == "ArrDep" or condition.type == "MinWaitDep" then
+        if condition.type == "ArrDep" or condition.type == "WaitDep" then
             timetable.setConditionType(line, stationNumber, condition.type)
             local arrDepCond = timetableObject[tostring(line)].stations[stationNumber].conditions[condition.type]
             local mergedArrays = timetableHelper.mergeArray(arrDepCond, condition[condition.type])
@@ -222,7 +222,7 @@ function timetable.removeCondition(line, station, type, index)
         return -1
     end
 
-    if type == "ArrDep" or type == "MinWaitDep" then
+    if type == "ArrDep" or type == "WaitDep" then
         local tmpTable = timetableObject[tostring(line)].stations[station].conditions[type]
         if tmpTable and tmpTable[index] then return table.remove(tmpTable, index) end
     else
@@ -265,8 +265,8 @@ function timetable.waitingRequired(vehicle)
     elseif currentStopInTimetableObj.conditions.type == "debounce" then
         return timetable.waitingRequiredDebounce(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
 
-    elseif currentStopInTimetableObj.conditions.type == "MinWaitDep" then
-        return timetable.waitingRequiredMinWaitDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
+    elseif currentStopInTimetableObj.conditions.type == "WaitDep" then
+        return timetable.waitingRequiredWaitDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
 
     else
         -- no conditions set
@@ -347,13 +347,13 @@ function timetable.waitingRequiredDebounce(vehicle, currentStopInCurrentlyWaitin
     end
 end
 
----is waiting required for conditions of type MinWaitDep
+---is waiting required for conditions of type WaitDep
 ---@param vehicle any
 ---@param currentStopInCurrentlyWaiting any
 ---@param currentStopInTimetableObj any
 ---@param time number in seconds game time
 ---@return boolean
-function timetable.waitingRequiredMinWaitDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
+function timetable.waitingRequiredWaitDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
 
     -- am I currently waiting or just arrived?
     if not (currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle]) then
@@ -366,7 +366,7 @@ function timetable.waitingRequiredMinWaitDep(vehicle, currentStopInCurrentlyWait
 
         -- just arrived
         local maxDelay = 90
-        local nextDepTime = timetable.getNextDepTime(currentStopInTimetableObj.conditions.MinWaitDep, time - maxDelay, currentStopInCurrentlyWaiting.vehiclesWaiting)
+        local nextDepTime = timetable.getNextDepTime(currentStopInTimetableObj.conditions.WaitDep, time - maxDelay, currentStopInCurrentlyWaiting.vehiclesWaiting)
         if not nextDepTime then
             -- no constraints set
             currentStopInCurrentlyWaiting.vehiclesWaiting = {}
@@ -375,7 +375,7 @@ function timetable.waitingRequiredMinWaitDep(vehicle, currentStopInCurrentlyWait
         if time < nextDepTime then
             -- Constraint set and I need to wait
             currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = {
-                type = "MinWaitDep",
+                type = "WaitDep",
                 arrivalTime = time,
                 departureTime = nextDepTime
             }
@@ -569,6 +569,8 @@ end
 ---@param time number in seconds game time
 ---@return number depTime in seconds game time
 function timetable.getNextDepTimeAfter(constraint, time)
+    local waitSec = constraint[1]*60 + constraint[2]
+    time = time + waitSec
 	local hours = math.floor(time/3600)*3600
     local depSecSinceH = constraint[3]*60 + constraint[4]
 	local depTime = hours + depSecSinceH
