@@ -43,6 +43,7 @@ local UIStrings = {
 		frequency = _("frequency_i18n"),
 		journey_time = _("journey_time_i18n"),
 		arr_dep	= _("arr_dep_i18n"),
+        min_wait_dep	= _("min_wait_dep_i18n"),
 		no_timetable = _("no_timetable_i18n"),
 		all	= _("all_i18n"),
 		add	= _("add_i18n"),
@@ -591,6 +592,7 @@ function timetableGUI.fillConstraintTable(index,lineID)
     comboBox:addItem(UIStrings.arr_dep)
     --comboBox:addItem("Minimum Wait")
     comboBox:addItem(UIStrings.unbunch)
+    comboBox:addItem(UIStrings.min_wait_dep)
     --comboBox:addItem("Every X minutes")
     comboBox:setGravity(1,0)
 
@@ -599,15 +601,16 @@ function timetableGUI.fillConstraintTable(index,lineID)
 
     comboBox:onIndexChanged(function (i)
         if i == -1 then return end
-        timetable.setConditionType(lineID, index, timetableHelper.constraintIntToString(i))
+        local condType = timetableHelper.constraintIntToString(i)
+        timetable.setConditionType(lineID, index, condType)
         timetableChanged = true
         timetableGUI.initStationTable()
         timetableGUI.fillStationTable(UIState.currentlySelectedLineTableIndex, false)
         UIState.currentlySelectedConstraintType = i
 
         timetableGUI.clearConstraintWindow()
-        if i == 1 then
-            timetableGUI.makeArrDepWindow(lineID, index)
+        if i == 1 or i == 3 then
+            timetableGUI.makeFourConditionsWindow(lineID, index, condType)
         elseif i == 2 then
             timetableGUI.makeDebounceWindow(lineID, index)
         end
@@ -628,21 +631,23 @@ function timetableGUI.fillConstraintTable(index,lineID)
 end
 
 
-function timetableGUI.makeArrDepWindow(lineID, stationID)
+function timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
     if not menu.constraintTable then return end
-    local conditions = timetable.getConditions(lineID,stationID, "ArrDep")
+    local conditions = timetable.getConditions(lineID, stationID, condType)
 
     -- setup add button
     local addButton = api.gui.comp.Button.new(api.gui.comp.TextView.new(UIStrings.add), true)
     addButton:setGravity(1,0)
     addButton:onClick(function()
-        timetable.addCondition(lineID,stationID, {type = "ArrDep", ArrDep = {{0,0,0,0}}})
+        local cond = {type = condType}
+		cond[condType] = {{0,0,0,0}}
+        timetable.addCondition(lineID,stationID, cond)
         timetableChanged = true
         clearConstraintWindowLaterHACK = function()
             timetableGUI.initStationTable()
             timetableGUI.fillStationTable(UIState.currentlySelectedLineTableIndex, false)
             timetableGUI.clearConstraintWindow()
-            timetableGUI.makeArrDepWindow(lineID, stationID)
+            timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
         end
     end)
 
@@ -672,7 +677,7 @@ function timetableGUI.makeArrDepWindow(lineID, stationID)
         arrivalMin:setMaximum(59,false)
         arrivalMin:setValue(v[1],false)
         arrivalMin:onChange(function(value)
-            timetable.updateArrDep(lineID, stationID, k, 1, value)
+            timetable.updateFourValueCondition(lineID, stationID, k, 1, value, condType)
             timetableChanged = true
             timetableGUI.initStationTable()
             timetableGUI.fillStationTable(UIState.currentlySelectedLineTableIndex, false)
@@ -683,7 +688,7 @@ function timetableGUI.makeArrDepWindow(lineID, stationID)
         arrivalSec:setMaximum(59,false)
         arrivalSec:setValue(v[2],false)
         arrivalSec:onChange(function(value)
-            timetable.updateArrDep(lineID, stationID, k, 2, value)
+            timetable.updateFourValueCondition(lineID, stationID, k, 2, value, condType)
             timetableChanged = true
             timetableGUI.initStationTable()
             timetableGUI.fillStationTable(UIState.currentlySelectedLineTableIndex, false)
@@ -691,13 +696,13 @@ function timetableGUI.makeArrDepWindow(lineID, stationID)
 
         local deleteButton = api.gui.comp.Button.new(api.gui.comp.TextView.new("X") ,true)
         deleteButton:onClick(function()
-            timetable.removeCondition(lineID, stationID, "ArrDep", k)
+            timetable.removeCondition(lineID, stationID, condType, k)
             timetableChanged = true
             clearConstraintWindowLaterHACK = function()
                 timetableGUI.initStationTable()
                 timetableGUI.fillStationTable(UIState.currentlySelectedLineTableIndex, false)
                 timetableGUI.clearConstraintWindow()
-                timetableGUI.makeArrDepWindow(lineID, stationID)
+                timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
             end
         end)
 
@@ -719,7 +724,7 @@ function timetableGUI.makeArrDepWindow(lineID, stationID)
         departureMin:setMaximum(59,false)
         departureMin:setValue(v[3],false)
         departureMin:onChange(function(value)
-            timetable.updateArrDep(lineID, stationID, k, 3, value)
+            timetable.updateFourValueCondition(lineID, stationID, k, 3, value, condType)
             timetableChanged = true
             timetableGUI.initStationTable()
             timetableGUI.fillStationTable(UIState.currentlySelectedLineTableIndex, false)
@@ -730,7 +735,7 @@ function timetableGUI.makeArrDepWindow(lineID, stationID)
         departureSec:setMaximum(59,false)
         departureSec:setValue(v[4],false)
         departureSec:onChange(function(value)
-            timetable.updateArrDep(lineID, stationID, k, 4, value)
+            timetable.updateFourValueCondition(lineID, stationID, k, 4, value, condType)
             timetableChanged = true
             timetableGUI.initStationTable()
             timetableGUI.fillStationTable(UIState.currentlySelectedLineTableIndex, false)

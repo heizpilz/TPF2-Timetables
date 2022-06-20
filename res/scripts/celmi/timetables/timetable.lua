@@ -140,16 +140,17 @@ function timetable.getAllConditionsOfAllStations()
     return res
 end
 
---[[ function timetable.getConditions(line, stationNumber, type)
+function timetable.getConditions(line, stationNumber, type)
     if not(line and stationNumber) then return -1 end
     if timetableObject[tostring(line)]
        and timetableObject[tostring(line)].stations[stationNumber]
-       and timetableObject[tostring(line)].stations[stationNumber].conditions[type] then
+       and timetableObject[tostring(line)].stations[stationNumber].conditions[type]
+       and timetableObject[tostring(line)].stations[stationNumber].conditions["type"] == type then
         return timetableObject[tostring(line)].stations[stationNumber].conditions[type]
     else
         return -1
     end
-end ]]
+end
 
 
 -- TEST: timetable.addCondition(1,1,{type = "ArrDep", ArrDep = {{12,14,14,14}}})
@@ -158,11 +159,11 @@ function timetable.addCondition(line, stationNumber, condition)
     if not(line and stationNumber and condition) then return -1 end
 
     if timetableObject[tostring(line)] and timetableObject[tostring(line)].stations[stationNumber] then
-        if condition.type == "ArrDep" then
+        if condition.type == "ArrDep" or condition.type == "MinWaitDep" then
             timetable.setConditionType(line, stationNumber, condition.type)
-            local arrDepCond = timetableObject[tostring(line)].stations[stationNumber].conditions.ArrDep
-            local mergedArrays = timetableHelper.mergeArray(arrDepCond, condition.ArrDep)
-            timetableObject[tostring(line)].stations[stationNumber].conditions.ArrDep = mergedArrays
+            local arrDepCond = timetableObject[tostring(line)].stations[stationNumber].conditions[condition.type]
+            local mergedArrays = timetableHelper.mergeArray(arrDepCond, condition[condition.type])
+            timetableObject[tostring(line)].stations[stationNumber].conditions[condition.type] = mergedArrays
         elseif condition.type == "minWait" then
             timetableObject[tostring(line)].stations[stationNumber].conditions.type = "minWait"
             timetableObject[tostring(line)].stations[stationNumber].conditions.minWait = condition.minWait
@@ -187,15 +188,15 @@ function timetable.addCondition(line, stationNumber, condition)
     end
 end
 
-function timetable.updateArrDep(line, station, indexKey, indexValue, value)
-    if not (line and station and indexKey and indexValue and value) then return -1 end
+function timetable.updateFourValueCondition(line, station, indexKey, indexValue, value, type)
+    if not (line and station and indexKey and indexValue and value and type) then return -1 end
     if timetableObject[tostring(line)] and
        timetableObject[tostring(line)].stations[station] and
        timetableObject[tostring(line)].stations[station].conditions and
-       timetableObject[tostring(line)].stations[station].conditions.ArrDep and
-       timetableObject[tostring(line)].stations[station].conditions.ArrDep[indexKey] and
-       timetableObject[tostring(line)].stations[station].conditions.ArrDep[indexKey][indexValue] then
-       timetableObject[tostring(line)].stations[station].conditions.ArrDep[indexKey][indexValue] = value
+       timetableObject[tostring(line)].stations[station].conditions[type] and
+       timetableObject[tostring(line)].stations[station].conditions[type][indexKey] and
+       timetableObject[tostring(line)].stations[station].conditions[type][indexKey][indexValue] then
+       timetableObject[tostring(line)].stations[station].conditions[type][indexKey][indexValue] = value
         return 0
     else
         return -2
@@ -221,8 +222,8 @@ function timetable.removeCondition(line, station, type, index)
         return -1
     end
 
-    if type == "ArrDep" then
-        local tmpTable = timetableObject[tostring(line)].stations[station].conditions.ArrDep
+    if type == "ArrDep" or type == "MinWaitDep" then
+        local tmpTable = timetableObject[tostring(line)].stations[station].conditions[type]
         if tmpTable and tmpTable[index] then return table.remove(tmpTable, index) end
     else
         -- just remove the whole condition
@@ -263,6 +264,9 @@ function timetable.waitingRequired(vehicle)
 
     elseif currentStopInTimetableObj.conditions.type == "debounce" then
         return timetable.waitingRequiredDebounce(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
+
+    elseif currentStopInTimetableObj.conditions.type == "MinWaitDep" then
+        return timetable.waitingRequiredMinWaitDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
 
     else
         -- no conditions set
@@ -340,6 +344,63 @@ function timetable.waitingRequiredDebounce(vehicle, currentStopInCurrentlyWaitin
         return false
     else
         return true
+    end
+end
+
+---is waiting required for conditions of type MinWaitDep
+---@param vehicle any
+---@param currentStopInCurrentlyWaiting any
+---@param currentStopInTimetableObj any
+---@param time number in seconds game time
+---@return boolean
+function timetable.waitingRequiredMinWaitDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
+
+    -- am I currently waiting or just arrived?
+    if not (currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle]) then
+        -- check if is about to depart
+
+        if currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle]
+           and (currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle].outboundTime + 60) > time then
+            return false
+        end
+
+        -- just arrived
+        local maxDelay = 90
+        local nextDepTime = timetable.getNextDepTime(currentStopInTimetableObj.conditions.MinWaitDep, time - maxDelay, currentStopInCurrentlyWaiting.vehiclesWaiting)
+        if not nextDepTime then
+            -- no constraints set
+            currentStopInCurrentlyWaiting.vehiclesWaiting = {}
+            return false
+        end
+        if time < nextDepTime then
+            -- Constraint set and I need to wait
+            currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = {
+                type = "MinWaitDep",
+                arrivalTime = time,
+                departureTime = nextDepTime
+            }
+
+            return true
+        else
+            -- Constraint set and its time to depart
+            currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle] = {outboundTime = time}
+            currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
+            return false
+        end
+    else
+        -- already waiting
+        if timetableHelper.getTimeUntilDeparture(vehicle) >= 5 then return false end
+
+        local departureTime = currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle].departureTime
+        if time < departureTime then
+            -- need to continue waiting
+            return true
+        else
+            -- done waiting
+            currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle] = {outboundTime = time}
+            currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
+            return false
+        end
     end
 end
 
@@ -457,12 +518,62 @@ function timetable.getNextConstraint(constraints, time, used_constraints)
     return constraints[res.index]
 end
 
+---Find the next valid departure time for given constraints and time
+---@param constraints table in format like: {{30,0,59,0},{9,0,59,0}}
+---@param curTime number in seconds game time
+---@param used_constraints table in format like: {constraint={30,0,59,0},constraint={9,0,59,0}}
+---@return number nextDepTime  in seconds game time
+function timetable.getNextDepTime(constraints, curTime, used_constraints)
+    -- Put the constraints in chronological order by arrival time
+
+	local possibleTimes = {}
+	for i=1, #constraints do
+		possibleTimes[i]= timetable.getNextDepTimeAfter(constraints[i], curTime)
+
+	end
+	if not possibleTimes[1] then return nil end
+
+	table.sort(possibleTimes, function(a,b)
+		return a < b
+		end)
+
+	local nextDepTime
+	local j = 1
+	local h = 0
+	local used
+	repeat
+		nextDepTime = possibleTimes[j] + h * 3600
+		if (j % #possibleTimes) == 0 then h = h + 1 end
+		used = false
+		for _, used_constraint in pairs(used_constraints) do
+			if nextDepTime == used_constraint.departureTime then
+				used = true
+			end
+		end
+		j = j + 1
+	until not used
+
+    return nextDepTime
+end
 ---Gets the arrival time in seconds from the constraint
 ---@param constraint table in format like: {9,0,59,0}
 function timetable.getArrivalTimeFrom(constraint)
     local arrMin = constraint[1]
     local arrSec = constraint[2]
     return arrMin * 60 + arrSec
+end
+
+
+---Gets the next departure time for the constraint after the specified time
+---@param constraint table in format like: {9,0,59,0}
+---@param time number in seconds game time
+---@return number depTime in seconds game time
+function timetable.getNextDepTimeAfter(constraint, time)
+	local hours = math.floor(time/3600)*3600
+    local depSecSinceH = constraint[3]*60 + constraint[4]
+	local depTime = hours + depSecSinceH
+	if depTime < time then depTime = depTime + 3600 end
+    return depTime
 end
 
 ---Calculates the time difference between two timestamps in seconds.

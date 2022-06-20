@@ -426,7 +426,7 @@ end
 -- returns String, ready to display in the UI
 function timetableHelper.conditionToString(cond, type)
     if (not cond) or (not type) then return "" end
-    if type =="ArrDep" then
+    if type =="ArrDep" or type == "MinWaitDep" then
         local arr = UIStrings.arr
         local dep = UIStrings.dep
         for _,v in pairs(cond) do
@@ -452,6 +452,7 @@ function timetableHelper.constraintIntToString(i)
     --elseif i == 2 then return "minWait"
     elseif i == 2 then return "debounce"
     --elseif i == 4 then return "moreFancey"
+    elseif i == 3 then return "MinWaitDep"
     else return "ERROR"
     end
 end
@@ -464,6 +465,7 @@ function timetableHelper.constraintStringToInt(i)
     --elseif i == "minWait" then return 2
     elseif i == "debounce" then return 2
     --elseif i == "moreFancey" then return 4
+    elseif i == "MinWaitDep" then return 3
     else return 0
     end
 
