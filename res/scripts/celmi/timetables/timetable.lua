@@ -159,7 +159,7 @@ function timetable.addCondition(line, stationNumber, condition)
     if not(line and stationNumber and condition) then return -1 end
 
     if timetableObject[tostring(line)] and timetableObject[tostring(line)].stations[stationNumber] then
-        if condition.type == "ArrDep" or condition.type == "WaitDep" then
+        if condition.type == "ArrDep" or condition.type == "WaitDep" or condition.type == "NoDep" then
             timetable.setConditionType(line, stationNumber, condition.type)
             local arrDepCond = timetableObject[tostring(line)].stations[stationNumber].conditions[condition.type]
             local mergedArrays = timetableHelper.mergeArray(arrDepCond, condition[condition.type])
@@ -222,7 +222,7 @@ function timetable.removeCondition(line, station, type, index)
         return -1
     end
 
-    if type == "ArrDep" or type == "WaitDep" then
+    if type == "ArrDep" or type == "WaitDep" or type == "NoDep" then
         local tmpTable = timetableObject[tostring(line)].stations[station].conditions[type]
         if tmpTable and tmpTable[index] then return table.remove(tmpTable, index) end
     else
@@ -267,6 +267,9 @@ function timetable.waitingRequired(vehicle)
 
     elseif currentStopInTimetableObj.conditions.type == "WaitDep" then
         return timetable.waitingRequiredWaitDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
+
+    elseif currentStopInTimetableObj.conditions.type == "NoDep" then
+        return timetable.waitingRequiredNoDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
 
     else
         -- no conditions set
@@ -389,6 +392,55 @@ function timetable.waitingRequiredWaitDep(vehicle, currentStopInCurrentlyWaiting
         end
     else
         -- already waiting
+        if timetableHelper.getTimeUntilDeparture(vehicle) >= 5 then return false end
+
+        local departureTime = currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle].departureTime
+        if time < departureTime then
+            -- need to continue waiting
+            return true
+        else
+            -- done waiting
+            currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle] = {outboundTime = time}
+            currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
+            return false
+        end
+    end
+end
+
+---Is waiting required for condition type NoDep
+---@param vehicle any
+---@param currentStopInCurrentlyWaiting any
+---@param currentStopInTimetableObj any
+---@param time number in seconds game time
+---@return boolean
+function timetable.waitingRequiredNoDep(vehicle, currentStopInCurrentlyWaiting, currentStopInTimetableObj, time)
+
+    -- am I currently waiting or just arrived?
+    if not (currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle]) then
+
+        -- check if is about to depart
+        if currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle]
+        and (currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle].outboundTime + 60) > time then
+            return false
+        end
+        local depNotBefore = timetable.getAcceptedDepTime(currentStopInTimetableObj.conditions.NoDep, time)
+
+        if depNotBefore <= time then
+            currentStopInCurrentlyWaiting.vehiclesDeparting[vehicle] = {outboundTime = time}
+            currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = nil
+            return false
+        else
+            -- Constraint set and I need to wait
+            currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle] = {
+                type = "NoDep",
+                arrivalTime = time,
+                departureTime = depNotBefore
+            }
+            return true
+        end
+    else
+        -- already waiting
+
         if timetableHelper.getTimeUntilDeparture(vehicle) >= 5 then return false end
 
         local departureTime = currentStopInCurrentlyWaiting.vehiclesWaiting[vehicle].departureTime
@@ -555,6 +607,42 @@ function timetable.getNextDepTime(constraints, curTime, used_constraints)
 
     return nextDepTime
 end
+
+---get the next acceptable departure time, if no condition applys, this is the current time
+---@param constraints any
+---@param curTime number current time in seconds game time
+---@return integer acceptedTime for departure in seconds game time
+function timetable.getAcceptedDepTime(constraints, curTime)
+    local blocked = false
+	local acceptedTime = 0
+	local timeInDay = curTime % 3600
+	for i=1, #constraints do
+		local conStartTime = constraints[i][1]*60 + constraints[i][2]
+		local conEndTime = constraints[i][3]*60 + constraints[i][4]
+		if conStartTime > conEndTime then
+			--constaint crosses minute border
+			if timeInDay > conStartTime or timeInDay < conEndTime then
+				blocked = true
+				if timeInDay > conStartTime then
+					acceptedTime = conEndTime + (math.floor(curTime/3600)+1)*3600
+				else
+					acceptedTime = conEndTime + (math.floor(curTime/3600))*3600
+				end
+			end
+		else
+			-- constraint in same minute
+			if timeInDay > conStartTime and timeInDay < conEndTime then
+				blocked = true
+				acceptedTime = conEndTime + math.floor(curTime/3600)*3600
+			end
+		end
+	end
+	if not blocked then
+		acceptedTime = curTime
+	end
+	return acceptedTime
+end
+
 ---Gets the arrival time in seconds from the constraint
 ---@param constraint table in format like: {9,0,59,0}
 function timetable.getArrivalTimeFrom(constraint)

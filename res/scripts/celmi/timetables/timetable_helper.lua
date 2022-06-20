@@ -4,6 +4,8 @@ local UIStrings = {
     arr = _("arr_i18n"),
     dep = _("dep_i18n"),
     wait = _("wait_i18n"),
+    to = _("to_i18n"),
+	from = _("from_i18n"),
     unbunchTime = _("unbunch_time_i18n")
 }
 
@@ -423,15 +425,18 @@ end
 -------------------------------------------------------------
 
 ---@param cond table : TimetableCondition,
----@param type string "ArrDep" | "debounce" | "WaitDep"
----@return string _ ready to display in the UI
+---@param type string "ArrDep" | "debounce" | "WaitDep" | "NoDep"
+---@return string String ready to display in the UI
 function timetableHelper.conditionToString(cond, type)
     if (not cond) or (not type) then return "" end
-    if type == "ArrDep" or type == "WaitDep" then
+    if type == "ArrDep" or type == "WaitDep" or type == "NoDep" then
         local arr = UIStrings.arr
         local dep = UIStrings.dep
         if type == "WaitDep" then
 			arr = UIStrings.wait
+		elseif type == "NoDep" then
+			arr = UIStrings.to
+            dep = UIStrings.from
 		end
         for _,v in pairs(cond) do
             arr = arr .. string.format("%02d", v[1]) .. ":" .. string.format("%02d", v[2])  .. "|"
@@ -457,11 +462,12 @@ function timetableHelper.constraintIntToString(i)
     elseif i == 2 then return "debounce"
     --elseif i == 4 then return "moreFancey"
     elseif i == 3 then return "WaitDep"
+    elseif i == 4 then return "NoDep"
     else return "ERROR"
     end
 end
 
----@param i string condition type string "None" | "ArrDep" | "debounce" | "WaitDep"
+---@param i string condition type string "None" | "ArrDep" | "debounce" | "WaitDep" | "NoDep"
 ---@return number index of combobox
 function timetableHelper.constraintStringToInt(i)
     if i == "None" then return 0
@@ -470,6 +476,7 @@ function timetableHelper.constraintStringToInt(i)
     elseif i == "debounce" then return 2
     --elseif i == "moreFancey" then return 4
     elseif i == "WaitDep" then return 3
+    elseif i == "NoDep" then return 4
     else return 0
     end
 end

@@ -32,6 +32,8 @@ local UIStrings = {
 		dep	= _("dep_i18n"),
 		departure = _("departure_i18n"),
         wait_time = _("wait_time_i18n"),
+        lastDep	= _("last_dep_i18n"),
+        firstDep = _("first_dep_i18n"),
 		unbunch_time = _("unbunch_time_i18n"),
 		unbunch	= _("unbunch_i18n"),
 		timetable = _("timetable_i18n"),
@@ -45,6 +47,7 @@ local UIStrings = {
 		journey_time = _("journey_time_i18n"),
 		arr_dep	= _("arr_dep_i18n"),
         wait_dep = _("wait_dep_i18n"),
+        no_dep	= _("no_dep_i18n"),
 		no_timetable = _("no_timetable_i18n"),
 		all	= _("all_i18n"),
 		add	= _("add_i18n"),
@@ -594,6 +597,7 @@ function timetableGUI.fillConstraintTable(index,lineID)
     --comboBox:addItem("Minimum Wait")
     comboBox:addItem(UIStrings.unbunch)
     comboBox:addItem(UIStrings.wait_dep)
+    comboBox:addItem(UIStrings.no_dep)
     --comboBox:addItem("Every X minutes")
     comboBox:setGravity(1,0)
 
@@ -610,7 +614,7 @@ function timetableGUI.fillConstraintTable(index,lineID)
         UIState.currentlySelectedConstraintType = i
 
         timetableGUI.clearConstraintWindow()
-        if i == 1 or i == 3 then
+        if i == 1 or i == 3 or i == 4 then
             timetableGUI.makeFourConditionsWindow(lineID, index, condType)
         elseif i == 2 then
             timetableGUI.makeDebounceWindow(lineID, index)
@@ -668,11 +672,13 @@ function timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
 
 
         local linetable = api.gui.comp.Table.new(5, 'NONE')
-        local firstRowLabelString
+        local firstRowLabelString = ""
         if condType == "ArrDep" then
             firstRowLabelString = UIStrings.arrival
         elseif condType == "WaitDep" then
             firstRowLabelString = UIStrings.wait_time
+        elseif condType == "NoDep" then
+            firstRowLabelString = UIStrings.lastDep
         end
         local firstRowLabel =  api.gui.comp.TextView.new(firstRowLabelString .. ":  ")
 
@@ -722,10 +728,16 @@ function timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
         })
         menu.constraintTable:addRow({linetable})
 
-        local departureLabel =  api.gui.comp.TextView.new(UIStrings.departure .. ":  ")
+        local secondRowLabelString = ""
+        if condType == "ArrDep" or condType == "WaitDep" then
+            secondRowLabelString = UIStrings.departure
+        elseif condType == "NoDep" then
+            secondRowLabelString = UIStrings.firstDep
+        end
+        local secondRowLabel =  api.gui.comp.TextView.new(secondRowLabelString .. ":  ")
 
-        departureLabel:setMinimumSize(api.gui.util.Size.new(80, 30))
-        departureLabel:setMaximumSize(api.gui.util.Size.new(80, 30))
+        secondRowLabel:setMinimumSize(api.gui.util.Size.new(80, 30))
+        secondRowLabel:setMaximumSize(api.gui.util.Size.new(80, 30))
         local departureMin = api.gui.comp.DoubleSpinBox.new()
         departureMin:setMinimum(0,false)
         departureMin:setMaximum(59,false)
@@ -755,7 +767,7 @@ function timetableGUI.makeFourConditionsWindow(lineID, stationID, condType)
 
         local linetable2 = api.gui.comp.Table.new(5, 'NONE')
         linetable2:addRow({
-            departureLabel,
+            secondRowLabel,
             departureMin,
             api.gui.comp.TextView.new(":"),
             departureSec,
