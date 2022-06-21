@@ -174,7 +174,88 @@ timetableTests[#timetableTests + 1] = function()
     x = timetable.waitingRequired(2)
     assert(not x, "Shouldn't wait for train")
 
-    timetableHelper = {}
+end
+
+-- All tests here done with line and station IDs of 1 for simplicity
+timetableTests[#timetableTests + 1] = function()
+    timetableHelper.getStationID = function(line, stationNumber)
+        assert(line == 1)
+        assert(stationNumber == 1)
+        return 1
+    end
+    timetableHelper.getCurrentLine = function(vehicle)
+        assert(vehicle == 1 or vehicle == 2)
+        return 1
+    end
+    timetableHelper.getCurrentStation = function(vehicle)
+        assert(vehicle == 1 or vehicle == 2)
+        return 1
+    end
+    timetableHelper.getTimeUntilDeparture = function(vehicle)
+        assert(vehicle == 1 or vehicle == 2)
+        return 1
+    end
+    timetable.setCurrentlyWaiting({})
+    timetable.setTimetableObject({})
+    timetable.addCondition(1, 1, {type = "NoDep", NoDep = {{55, 0, 58, 0}, {59, 0, 2, 0}, {57, 0, 0, 0}}})
+
+    do
+        timetableHelper.getTime = function()
+            return ((2*3600) + (57*60) + 1) -- 57:01
+        end
+        local x = timetable.waitingRequired(1)
+        assert(x, "Should wait for block")
+    end
+    do
+        timetableHelper.getTime = function()
+            return (2*3600) + (57*60) + 11 -- 57:11
+        end
+        local x = timetable.waitingRequired(2)
+        assert(x, "Should wait for block")
+    end
+    do
+        timetableHelper.getTime = function()
+            return (3*3600) + (0*60) + 0 -- 00:00
+        end
+        local x = timetable.waitingRequired(1)
+        assert(x, "Should wait for block")
+    end
+    do
+        timetableHelper.getTime = function()
+            return (3*3600) + (0*60) + 1 -- 00:01
+        end
+        local x = timetable.waitingRequired(1)
+        assert(x, "Should wait for block")
+    end
+    do
+        timetableHelper.getTime = function()
+            return (3*3600) + (30*60) + 11 -- 30:11
+        end
+        local x = timetable.waitingRequired(2)
+        assert(not x, "Shouldn't wait for block")
+    end
+    do
+        timetableHelper.getTime = function()
+            return (4*3600) + (0*60) + 0 -- 00:00
+        end
+        local x = timetable.waitingRequired(2)
+        assert(x, "Should wait for block")
+    end
+    do
+        timetableHelper.getTime = function()
+            return (4*3600) + (2*60) + 0 -- 02:00
+        end
+        local x = timetable.waitingRequired(2)
+        assert(not x, "Shouldn't wait for block")
+    end
+    do
+        timetableHelper.getTime = function()
+            return (4*3600) + (2*60) + 1 -- 02:01
+        end
+        local x = timetable.waitingRequired(2)
+        assert(not x, "Shouldn't wait for block")
+    end
+
 end
 
 return {
