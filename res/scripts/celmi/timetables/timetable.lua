@@ -613,33 +613,39 @@ end
 ---@param curTime number current time in seconds game time
 ---@return integer acceptedTime for departure in seconds game time
 function timetable.getAcceptedDepTime(constraints, curTime)
-    local blocked = false
-	local acceptedTime = 0
+	local acceptedTime = curTime
 	local timeInDay = curTime % 3600
 	for i=1, #constraints do
 		local conStartTime = constraints[i][1]*60 + constraints[i][2]
 		local conEndTime = constraints[i][3]*60 + constraints[i][4]
+        local endGameTime = acceptedTime
 		if conStartTime > conEndTime then
-			--constaint crosses minute border
+			--constaint crosses hour border
 			if timeInDay > conStartTime or timeInDay < conEndTime then
-				blocked = true
+                --curTime in constraint
 				if timeInDay > conStartTime then
-					acceptedTime = conEndTime + (math.floor(curTime/3600)+1)*3600
+                    endGameTime = conEndTime + (math.floor(curTime/3600)+1)*3600
 				else
-					acceptedTime = conEndTime + (math.floor(curTime/3600))*3600
+					endGameTime =  conEndTime + (math.floor(curTime/3600))*3600
 				end
 			end
 		else
-			-- constraint in same minute
+			-- constraint in same hour
 			if timeInDay > conStartTime and timeInDay < conEndTime then
-				blocked = true
-				acceptedTime = conEndTime + math.floor(curTime/3600)*3600
+                --curTime in constraint
+				endGameTime =  conEndTime + math.floor(curTime/3600)*3600
 			end
 		end
+        if acceptedTime<endGameTime then
+            --constraint lasts longer than known before
+            acceptedTime = endGameTime
+        end
 	end
-	if not blocked then
-		acceptedTime = curTime
-	end
+    --call recursive in case acceptedTime is within another constraint
+    if acceptedTime ~= curTime then
+        --curTime was within a constraint
+        acceptedTime = timetable.getAcceptedDepTime(constraints, acceptedTime)
+    end
 	return acceptedTime
 end
 
